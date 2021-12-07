@@ -146,12 +146,12 @@ class MapActivity : BaseActivity<ActivityMainBinding>(), OnMapReadyCallback {
         vectorDrawable!!.setBounds(
             0,
             0,
-            50,
-            50
+            65,
+            60
         )
         val bitmap: Bitmap = Bitmap.createBitmap(
-            40,
-            40,
+            65,
+            60,
             Bitmap.Config.ARGB_8888
         )
         val canvas = Canvas(bitmap)
