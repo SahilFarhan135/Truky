@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Truky</string>
+    <string name="txt_days_ago">days ago</string>
+    <string name="google_maps_key" templateMergeStrategy="preserve" translatable="false">AIzaSyBUpH_65tY-v9kFpCZ_8eXTP3QmPrpc5_8</string>
+    <string name="txt_stopped_since">Stopped since last </string>
+    <string name="txt_running_since_">Running since last </string>
+    <string name="txt_truck_image">Truck Image</string>
+    <string name="txt_app_namee">Trucky</string>
+    <string name="desc_image_for_list">image for List</string>
+    <string name="desc_image_for_map">Image for map</string>
+    <string name="desc_image_for_search">Image for search</string>
+    <string name="desc_img_normal">Image to restore normal state of recyclerview search</string>
+    <string name="txt_search">Search</string>
+
+</resources>
