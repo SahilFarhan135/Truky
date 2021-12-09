@@ -1,16 +1,22 @@
 package com.example.truky.ui.map
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
+import android.widget.Filter
+import android.widget.Filterable
 import androidx.activity.viewModels
 import androidx.core.content.ContextCompat
 import com.example.networkdomain.model.TruckItemEntity
 import com.example.truky.R
 import com.example.truky.base.BaseActivity
 import com.example.truky.databinding.ActivityMainBinding
+import com.example.truky.ui.listactivity.adapter.TruckAdapter
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
@@ -23,10 +29,11 @@ import java.util.concurrent.TimeUnit
 import kotlin.collections.ArrayList
 
 @AndroidEntryPoint
-class MapActivity : BaseActivity<ActivityMainBinding>(), OnMapReadyCallback {
+class MapActivity : BaseActivity<ActivityMainBinding>(), OnMapReadyCallback,Filterable {
 
     private lateinit var mapCurrent: GoogleMap
     private var truckList = ArrayList<TruckItemEntity>()
+    private var truckListAll = ArrayList<TruckItemEntity>()
     private var mapFragment: SupportMapFragment? = null
 
     companion object {
@@ -46,8 +53,7 @@ class MapActivity : BaseActivity<ActivityMainBinding>(), OnMapReadyCallback {
 
     private fun getData() {
         if (intent.getParcelableArrayListExtra<TruckItemEntity>(KEY_LAT_LNG) != null) {
-            truckList =
-                intent.getParcelableArrayListExtra<TruckItemEntity>(KEY_LAT_LNG) as ArrayList<TruckItemEntity>
+            truckList = intent.getParcelableArrayListExtra<TruckItemEntity>(KEY_LAT_LNG) as ArrayList<TruckItemEntity>
         }
     }
 
@@ -55,7 +61,7 @@ class MapActivity : BaseActivity<ActivityMainBinding>(), OnMapReadyCallback {
     private fun initUi() {
         with(binding) {
             appbar.tvTitle.text = getString(R.string.txt_app_namee)
-            appbar.imgSearch.visibility = View.GONE
+            appbar.imgSearch.visibility = View.VISIBLE
             appbar.imgMap.visibility = View.GONE
             appbar.imgList.visibility = View.VISIBLE
         }
@@ -71,24 +77,44 @@ class MapActivity : BaseActivity<ActivityMainBinding>(), OnMapReadyCallback {
             onBackPressed()
             finish()
         }
+        binding.appbar.etSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) = Unit
+            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
+                filterr.filter(p0.toString())
+            }
+            override fun afterTextChanged(p0: Editable?) {}
+        })
+        binding.appbar.imgSearch.setOnClickListener {
+            binding.appbar.clNormalLayout.visibility = View.GONE
+            binding.appbar.clSearch.visibility = View.VISIBLE
+        }
+        binding.appbar.imgNormal.setOnClickListener {
+            binding.appbar.clNormalLayout.visibility = View.VISIBLE
+            binding.appbar.clSearch.visibility = View.GONE
+            addMarker(truckListAll)
+        }
+        binding.appbar.imgCut.setOnClickListener {
+            if(binding.appbar.etSearch.text.isNullOrBlank()){
+                binding.appbar.clNormalLayout.visibility = View.VISIBLE
+                binding.appbar.clSearch.visibility = View.GONE
+                addMarker(truckListAll)
+                return@setOnClickListener
+            }
+            binding.appbar.etSearch.text?.clear()
+        }
+
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
         MapsInitializer.initialize(this)
         mapCurrent = googleMap
         mapCurrent.mapType = GoogleMap.MAP_TYPE_NORMAL
-        addMarker()
-        val cameraUpdate = CameraUpdateFactory.newLatLngZoom(
-            LatLng(
-                truckList[0].lastWaypoint?.lat ?: 0.0,
-                truckList[0].lastWaypoint?.lng ?: 0.0
-            ), 8f
-        )
-        mapCurrent.animateCamera(cameraUpdate)
+        addMarker(truckList)
     }
 
 
-    private fun addMarker() {
+    private fun addMarker(truckList:ArrayList<TruckItemEntity>) {
+        mapCurrent.clear()
         truckList.forEach {
             val latLng = LatLng(it.lastWaypoint?.lat ?: 0.0, it.lastWaypoint?.lng ?: 0.0)
             val markerOptions = MarkerOptions().position(latLng)
@@ -109,6 +135,15 @@ class MapActivity : BaseActivity<ActivityMainBinding>(), OnMapReadyCallback {
             }
             markerOptions.anchor((0.5f), 0.5f)
             mapCurrent.addMarker(markerOptions)
+        }
+        if(truckList.size!=0){
+            val cameraUpdate = CameraUpdateFactory.newLatLngZoom(
+                LatLng(
+                    truckList[0].lastWaypoint?.lat ?: 0.0,
+                    truckList[0].lastWaypoint?.lng ?: 0.0
+                ), 10f
+            )
+            mapCurrent.animateCamera(cameraUpdate)
         }
     }
 
@@ -204,6 +239,45 @@ class MapActivity : BaseActivity<ActivityMainBinding>(), OnMapReadyCallback {
         _viewModel.setError.observe(this, {
             showToast(it.toString())
         })
+    }
+
+    override fun getFilter(): Filter {
+       return  filterr
+    }
+    val filterr = object : Filter() {
+        override fun performFiltering(p0: CharSequence?): FilterResults {
+            val localList = ArrayList<TruckItemEntity>()
+            truckListAll.addAll(truckList)
+            if (p0 == null || p0.isEmpty()) {
+                localList.addAll(truckListAll)
+            } else {
+                for (item in truckListAll) {
+                    if (item.truckNumber != null && item.truckNumber?.lowercase(Locale.ENGLISH) != null) {
+                        if (item.truckNumber!!.lowercase(Locale.ENGLISH).contains(p0.toString().lowercase(Locale.ENGLISH))) {
+                            localList.add(item)
+                        }
+                    }
+                }
+            }
+            val filterResults = FilterResults()
+            filterResults.values = localList
+            return filterResults
+        }
+
+        @SuppressLint("NotifyDataSetChanged")
+        override fun publishResults(p0: CharSequence?, p1: FilterResults?) {
+            truckList.clear()
+
+            if (p1 != null) {
+                truckList.addAll(p1.values as Collection<TruckItemEntity>)
+                if(truckList.size==0){
+                    showToast("No truck found")
+                    return
+                }
+            }
+            addMarker(truckList)
+        }
+
     }
 
 
